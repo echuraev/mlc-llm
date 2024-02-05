@@ -771,12 +771,14 @@ class ChatModule:  # pylint: disable=too-many-instance-attributes
                     device=self.device,
                 )
             )
+        print(" >>>>>>>>>>>> ", self.model_lib_path)
         _inspect_model_lib_metadata_memory_usage(self.model_lib_path, self.config_file_path)
 
         # 5. Call reload
         user_chat_config_json_str = _convert_chat_config_to_json_str(
             self.chat_config, self.chat_config.conv_template
         )
+        print(" >>>> Reload call: ", self.model_lib_path, ", model_path: ", self.model_path, ", user_chat_config_json_str: ", user_chat_config_json_str)
         self._reload(self.model_lib_path, self.model_path, user_chat_config_json_str)
 
     def generate(

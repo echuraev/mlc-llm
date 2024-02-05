@@ -34,6 +34,9 @@
 #include "random.h"
 #include "tokenizers.h"
 
+
+#include <dlfcn.h>
+
 namespace mlc {
 namespace llm {
 
@@ -103,6 +106,7 @@ struct FunctionTable {
     this->model_config = model_config;
 
     if (num_shards > 1) {
+        std::cout << "111111111111111111111" << std::endl;
       String lib_path{nullptr};
       try {
         lib_path = reload_lib.operator String();
@@ -156,21 +160,28 @@ struct FunctionTable {
         this->model_metadata_ = ModelMetadata::FromModule(mod, std::move(model_config));
       }
     } else {
+        std::cout << "222222222222222222222" << std::endl;
       Module executable{nullptr};
       if (reload_lib.type_code() == kTVMModuleHandle) {
         executable = reload_lib.operator Module();
       } else {
         String lib_path = reload_lib.operator String();
+        std::cout << "Before load from file: " << lib_path << std::endl;
+        std::cout << "DLSym output: " << dlsym(nullptr, "TVMFuncCall") << std::endl;
         executable = tvm::runtime::Module::LoadFromFile(lib_path);
+        std::cout << "After load from file: " << lib_path << std::endl;
       }
       this->use_disco = false;
+      std::cout << "Executable: " << executable << std::endl;
       auto fload_exec = executable->GetFunction("vm_load_executable");
+        std::cout << "333333333333333333333" << std::endl;
       ICHECK(fload_exec.defined()) << "TVM runtime cannot find vm_load_executable";
       this->local_vm = fload_exec();
       this->local_vm->GetFunction("vm_initialization")(
           static_cast<int>(device.device_type), device.device_id,
           static_cast<int>(memory::AllocatorType::kPooled), static_cast<int>(kDLCPU), 0,
           static_cast<int>(memory::AllocatorType::kPooled));
+        std::cout << "444444444444444444444" << std::endl;
       this->mod_get_func = [this](const std::string& name) -> PackedFunc {
         PackedFunc func = this->local_vm->GetFunction(name, false);
         return func;
@@ -180,8 +191,11 @@ struct FunctionTable {
         CHECK(f != nullptr) << "ValueError: Cannot find function " << name;
         return *f;
       };
+        std::cout << "555555555555555555555" << std::endl;
       this->model_metadata_ = ModelMetadata::FromModule(this->local_vm, std::move(model_config));
+        std::cout << "666666666666666666666" << std::endl;
       this->_InitFunctions();
+        std::cout << "777777777777777777777" << std::endl;
     }
   }
 
@@ -543,6 +557,7 @@ class LLMChat {
    */
   void Reload(TVMArgValue reload_lib, String model_path, String app_config_json = "") {
     // Step 1. Process config json string.
+      std::cout << "Step 1" << std::endl;
     picojson::object model_config;
     {
       std::ifstream config_istream((model_path + "/mlc-chat-config.json").c_str());
@@ -560,10 +575,12 @@ class LLMChat {
       }
     }
     // Step 2. Set tokenizer.
+      std::cout << "Step 2" << std::endl;
     this->tokenizer_ = Tokenizer::FromPath(model_path);
     // Step 3. Initialize vm, we use the packed function mechanism
     // so there is no explicit abi dependency on these extra
     // classes other than basic tvm runtime.
+      std::cout << "Step 3" << std::endl;
     this->ft_.Init(reload_lib, device_, model_config);
     UpdateConfigFromMetadata();
     if (this->sliding_window_size_ == -1) {
@@ -571,6 +588,7 @@ class LLMChat {
           << "Key \"max_window_size\" not found.";
     }
     // Step 4. Initialize sample functions.
+      std::cout << "Step 4" << std::endl;
     auto fsample_topp_from_prob_ptr =
         tvm::runtime::Registry::Get("vm.builtin.sample_top_p_from_prob");
     ICHECK(fsample_topp_from_prob_ptr)
@@ -582,10 +600,13 @@ class LLMChat {
         << "Cannot find env function vm.builtin.sample_top_p_from_logits";
     fsample_topp_from_logits_ = *fsample_topp_from_logits_ptr;
     // Step 5. Load params in nd-array cache.
+      std::cout << "Step 5, model_path: " << model_path << ", device: " << device_.device_type << " : " << device_.device_id << ", use_presharded_weights_: " << use_presharded_weights_ << std::endl;
     this->params_ = ft_.LoadParams(model_path, device_, use_presharded_weights_);
     // Step 6. KV cache creation.
+      std::cout << "Step 6" << std::endl;
     this->kv_cache_ = ft_.create_kv_cache_func_();
     // Step 7. Pre-allocate fixed size ndarray
+      std::cout << "Step 7" << std::endl;
     this->temperature_arr_ = NDArray::Empty({1}, DataType::Float(32), device_);
     float temperature = static_cast<float>(this->temperature_);
     this->temperature_arr_.CopyFromBytes(&temperature, sizeof(float));
@@ -595,6 +616,7 @@ class LLMChat {
           Downcast<DRef>(ft_.Empty(ShapeTuple({1, 1}), DataType::Int(32), null_device));
     }
     // Step 8. Reset chat
+      std::cout << "Step 8" << std::endl;
     this->ResetChat();
   }
 

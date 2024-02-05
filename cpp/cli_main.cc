@@ -439,7 +439,9 @@ void Chat(ChatModule* chat, const std::string& device_name, std::string local_id
           std::string lib_path, int stream_interval = 2) {
   ModelPaths model = ModelPaths::Find(device_name, local_id, lib_path);
   PrintSpecialCommands();
+  std::cout << "Before Reload" << std::endl;
   chat->Reload(model);
+  std::cout << "After Reload" << std::endl;
   chat->ProcessSystemPrompts();
   while (true) {
     std::string input;
@@ -509,6 +511,7 @@ int main(int argc, char* argv[]) {
     lib_path = args.get<std::string>("--model-lib-path");
   }
   auto [device_name, device_id] = DetectDevice(args.get<std::string>("--device"));
+  std::cout << "Device_name: " << device_name << ", id: " << device_id << std::endl;
 
   try {
     ChatModule chat(GetDevice(device_name, device_id));

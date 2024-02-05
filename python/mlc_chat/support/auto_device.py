@@ -73,7 +73,8 @@ def _device_exists(device: Device) -> bool:
     if subproc_outputs:
         if subproc_outputs[0]:
             for i in subproc_outputs[0].split(","):
-                logger.info("%s device: %s:%s", FOUND, device_type, i)
+                print(device)
+                logger.info("%s device: %s:%s. %s", FOUND, device_type, i, subproc_outputs[0])
                 _RESULT_CACHE[f"{device_type}:{i}"] = True
     else:
         logger.error(

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(mlc_llm C CXX)
+link_directories(${CMAKE_BINARY_DIR}/../dist/Llama-2-7b-chat-hf-q4f16_1-MLC)
 
 include(CheckCXXCompilerFlag)
 if(MSVC)
@@ -53,7 +54,7 @@ set(USE_AOT_EXECUTOR OFF)
 set(USE_PROFILER OFF)
 set(USE_GTEST OFF)
 set(USE_LIBBACKTRACE OFF)
-set(BUILD_DUMMY_LIBTVM ON)
+#set(BUILD_DUMMY_LIBTVM ON)
 if (NOT DEFINED TVM_HOME)
   set(TVM_HOME 3rdparty/tvm)
 endif (NOT DEFINED TVM_HOME)
@@ -135,7 +136,9 @@ if (MLC_LLM_INSTALL_STATIC_LIB)
   target_link_libraries(
     mlc_chat_cli PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,tvm_runtime>")
 else()
-  target_link_libraries(mlc_chat_cli PUBLIC mlc_llm)
+    target_link_libraries(mlc_chat_cli PUBLIC mlc_llm)
+    #target_link_libraries(mlc_chat_cli PUBLIC mlc_llm Llama-2-7b-chat-hf-q4f16_1-android)
+    #target_link_libraries(mlc_chat_cli PUBLIC mlc_llm Llama-2-7b-chat-hf-q4f16_1-metal)
 endif()
 
 add_library(mlc_llm_module SHARED $<TARGET_OBJECTS:mlc_llm_objs>)
@@ -182,3 +185,5 @@ else()
     LIBRARY DESTINATION lib${LIB_SUFFIX}
   )
 endif()
+
+include(cmake/mlc_llm_rpc.cmake)

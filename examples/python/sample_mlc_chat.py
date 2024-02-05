@@ -7,7 +7,8 @@ from mlc_chat.callback import StreamToStdout
 # Create a ChatModule instance
 cm = ChatModule(
     model="dist/Llama-2-7b-chat-hf-q4f16_1-MLC",
-    model_lib_path="dist/prebuilt_libs/Llama-2-7b-chat-hf/Llama-2-7b-chat-hf-q4f16_1-cuda.so"
+    model_lib_path="dist/Llama-2-7b-chat-hf-q4f16_1-MLC/Llama-2-7b-chat-hf-q4f16_1-metal.so",
+    device="metal:1"
     # Vulkan on Linux: Llama-2-7b-chat-hf-q4f16_1-vulkan.so
     # Metal on macOS: Llama-2-7b-chat-hf-q4f16_1-metal.so
     # Other platforms: Llama-2-7b-chat-hf-q4f16_1-{backend}.{suffix}

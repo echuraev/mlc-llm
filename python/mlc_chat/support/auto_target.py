@@ -171,7 +171,13 @@ def _build_android():
     def build(mod: IRModule, args: "CompileArgs", pipeline=None):
         output = args.output
         mod = _add_system_lib_prefix(mod, args.system_lib_prefix, is_system_lib=True)
-        assert output.suffix == ".tar"
+        if output.suffix == ".tar":
+            fcompile = tar.tar
+        elif output.suffix == ".so":
+            fcompile = ndk.create_shared
+        else:
+            raise RuntimeError(f"Incorrect type of the output file: {output.suffix}")
+        print("Target: ", args.target)
         relax.build(
             mod,
             target=args.target,
@@ -179,7 +185,7 @@ def _build_android():
             system_lib=True,
         ).export_library(
             str(output),
-            fcompile=tar.tar,
+            fcompile=fcompile,
         )
 
     return build
