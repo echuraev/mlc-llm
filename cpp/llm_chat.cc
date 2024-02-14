@@ -201,6 +201,7 @@ struct FunctionTable {
 
   ObjectRef LoadParams(const std::string& model_path, Device device, bool use_presharded_weights) {
     if (this->use_disco) {
+        std::cout << "llm_chat.cc: LoadParams, this->use_disto" << std::endl;
       DRef params{nullptr};
       if (this->model_metadata_.params.empty()) {
         std::filesystem::path fs_model_path = model_path;
@@ -223,18 +224,23 @@ struct FunctionTable {
       }
       return params;
     } else {
+        std::cout << "llm_chat.cc: LoadParams, else" << std::endl;
       CHECK(!use_presharded_weights) << "Use of pre-sharded weights requires more than one GPU";
 
       const PackedFunc* fload_cache = tvm::runtime::Registry::Get("vm.builtin.ndarray_cache.load");
       ICHECK(fload_cache) << "TVM runtime cannot find vm.builtin.ndarray_cache.load";
+        std::cout << "llm_chat.cc: LoadParams, before: vm.builtin.ndarray_cache.load" << std::endl;
       (*fload_cache)(model_path, static_cast<int32_t>(device.device_type), device.device_id);
+        std::cout << "llm_chat.cc: LoadParams, after: vm.builtin.ndarray_cache.load" << std::endl;
       Array<NDArray> params;
       if (this->model_metadata_.params.empty()) {
+        std::cout << "llm_chat.cc: LoadParams, after: this->model_metadata_.params.empty()" << this->model_metadata_.params.empty() << std::endl;
         constexpr const char* name_loader = "vm.builtin.param_array_from_cache";
         const PackedFunc* fload_params = tvm::runtime::Registry::Get(name_loader);
         ICHECK(fload_params) << "Cannot find env function: " << name_loader;
         params = (*fload_params)("param", -1);
       } else {
+        std::cout << "llm_chat.cc: LoadParams, after: this->model_metadata_.params.empty(): else" << std::endl;
         constexpr const char* name_loader = "vm.builtin.param_array_from_cache_by_name";
         const PackedFunc* fload_params = tvm::runtime::Registry::Get(name_loader);
         ICHECK(fload_params) << "Cannot find env function: " << name_loader;

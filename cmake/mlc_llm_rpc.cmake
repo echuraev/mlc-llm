@@ -8,7 +8,7 @@ set(TVM_RPC_SOURCES
 )
 tvm_file_glob(GLOB RUNTIME_RPC_SRCS ${TVM_HOME}/src/runtime/rpc/*.cc)
 list(APPEND TVM_RPC_SOURCES ${RUNTIME_RPC_SRCS})
-link_directories(${CMAKE_BINARY_DIR})
+link_directories(${CMAKE_BINARY_DIR}/../dist/Llama-2-7b-chat-hf-q4f16_1-MLC)
 
 set(TVM_RPC_LINKER_LIBS "")
 
@@ -19,6 +19,7 @@ endif()
 # Set output to same directory as the other TVM libs
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 add_executable(mlc_llm_rpc ${TVM_RPC_SOURCES})
+set_target_properties(mlc_llm_rpc PROPERTIES PREFIX "")
 
 include(CheckIPOSupported)
 check_ipo_supported(RESULT result OUTPUT output)
@@ -81,7 +82,8 @@ endif()
 list(APPEND TVM_RPC_LINKER_LIBS mlc_llm)
 
 #list(APPEND TVM_RPC_LINKER_LIBS Llama-2-7b-chat-hf-q4f16_1-metal)
-list(APPEND TVM_RPC_LINKER_LIBS Llama-2-7b-chat-hf-q4f16_1-opencl)
+list(APPEND TVM_RPC_LINKER_LIBS Llama-2-7b-chat-hf-q4f16_1-android)
+#list(APPEND TVM_RPC_LINKER_LIBS Llama-2-7b-chat-hf-q4f16_1-metal)
 
 target_link_libraries(mlc_llm_rpc ${TVM_RPC_LINKER_LIBS})
 

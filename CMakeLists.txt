@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
 project(mlc_llm C CXX)
-link_directories(${CMAKE_BINARY_DIR}/../dist/Llama-2-7b-chat-hf-q4f16_1-MLC)
 
 include(CheckCXXCompilerFlag)
 if(MSVC)
@@ -8,6 +7,7 @@ if(MSVC)
 else()
   set(CMAKE_CXX_FLAGS "-ffast-math ${CMAKE_CXX_FLAGS}")
 endif()
+link_directories(${CMAKE_BINARY_DIR}/../dist/Llama-2-7b-chat-hf-q4f16_1-MLC)
 
 if(EXISTS ${CMAKE_BINARY_DIR}/config.cmake)
   include(${CMAKE_BINARY_DIR}/config.cmake)
@@ -137,7 +137,7 @@ if (MLC_LLM_INSTALL_STATIC_LIB)
     mlc_chat_cli PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,tvm_runtime>")
 else()
     target_link_libraries(mlc_chat_cli PUBLIC mlc_llm)
-    #target_link_libraries(mlc_chat_cli PUBLIC mlc_llm Llama-2-7b-chat-hf-q4f16_1-android)
+    target_link_libraries(mlc_chat_cli PUBLIC mlc_llm Llama-2-7b-chat-hf-q4f16_1-android)
     #target_link_libraries(mlc_chat_cli PUBLIC mlc_llm Llama-2-7b-chat-hf-q4f16_1-metal)
 endif()
 
