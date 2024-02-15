@@ -11,6 +11,7 @@ else()
   set(CMAKE_CXX_FLAGS "/std:c++17 ${CMAKE_CXX_FLAGS}")
   set(CMAKE_CUDA_STANDARD 17)
 endif()
+link_directories(${CMAKE_BINARY_DIR}/../dist/Llama-2-7b-chat-hf-q4f16_1)
 
 if(EXISTS ${CMAKE_BINARY_DIR}/config.cmake)
   include(${CMAKE_BINARY_DIR}/config.cmake)
@@ -136,7 +137,8 @@ if (MLC_LLM_INSTALL_STATIC_LIB)
   target_link_libraries(
     mlc_chat_cli PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,tvm_runtime>")
 else()
-  target_link_libraries(mlc_chat_cli PUBLIC mlc_llm)
+  #target_link_libraries(mlc_chat_cli PUBLIC mlc_llm)
+  target_link_libraries(mlc_chat_cli PUBLIC mlc_llm Llama-2-7b-chat-hf-q4f16_1-android)
 endif()
 
 add_library(mlc_llm_module SHARED $<TARGET_OBJECTS:mlc_llm_objs>)

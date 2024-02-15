@@ -659,6 +659,10 @@ def parse_target(args: argparse.Namespace) -> None:
                 "fcompile": tar.tar,
             }
             args.lib_format = "tar"
+            args.export_kwargs = {
+                "fcompile": ndk.create_shared,
+            }
+            args.lib_format = "so"
             args.system_lib = True
             args.system_lib_prefix = f"{args.model}_{args.quantization}_".replace("-", "_")
         args.target = tvm.target.Target(
