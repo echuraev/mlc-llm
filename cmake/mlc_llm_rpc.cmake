@@ -8,6 +8,7 @@ set(TVM_RPC_SOURCES
 )
 tvm_file_glob(GLOB RUNTIME_RPC_SRCS ${TVM_HOME}/src/runtime/rpc/*.cc)
 list(APPEND TVM_RPC_SOURCES ${RUNTIME_RPC_SRCS})
+list(APPEND TVM_RPC_SOURCES cpp/rpc_dummy.cc)
 link_directories(${CMAKE_BINARY_DIR}/../dist/Llama-2-7b-chat-hf-q4f16_1-MLC)
 
 set(TVM_RPC_LINKER_LIBS "")
