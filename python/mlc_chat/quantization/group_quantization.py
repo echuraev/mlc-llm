@@ -321,6 +321,7 @@ class GroupQuantizeLinear(nn.Module):  # pylint: disable=too-many-instance-attri
         config: GroupQuantize,
         bias: bool = True,
         out_dtype: Optional[str] = None,
+        name_w: Optional[str] = None,
     ) -> None:
         super().__init__()
         self.in_features = in_features
@@ -328,16 +329,18 @@ class GroupQuantizeLinear(nn.Module):  # pylint: disable=too-many-instance-attri
         self.out_dtype = out_dtype
         self.config = config
         num_group = tir.ceildiv(in_features, config.group_size)
+        name_q = name_w + '_q' if name_w is not None else None
+        name_s = name_w + '_s' if name_w is not None else None
         if config.linear_weight_layout == "KN":
             self.q_weight = nn.Parameter(
-                (config.num_storage_per_group * num_group, out_features), config.storage_dtype
+                (config.num_storage_per_group * num_group, out_features), config.storage_dtype, name=name_q
             )
-            self.q_scale = nn.Parameter((num_group, out_features), config.model_dtype)
+            self.q_scale = nn.Parameter((num_group, out_features), config.model_dtype, name=name_s)
         else:
             self.q_weight = nn.Parameter(
-                (out_features, config.num_storage_per_group * num_group), config.storage_dtype
+                (out_features, config.num_storage_per_group * num_group), config.storage_dtype, name=name_q
             )
-            self.q_scale = nn.Parameter((out_features, num_group), config.model_dtype)
+            self.q_scale = nn.Parameter((out_features, num_group), config.model_dtype, name=name_s)
         if bias:
             self.bias = nn.Parameter(
                 (out_features,), config.model_dtype if out_dtype is None else out_dtype
@@ -371,6 +374,7 @@ class GroupQuantizeLinear(nn.Module):  # pylint: disable=too-many-instance-attri
             config=config,
             bias=getattr(src, "bias", None) is not None,
             out_dtype=src.out_dtype,
+            name_w=src.name_w,
         )
         if quantized_linear.bias is not None:
             quantized_linear.bias.attrs = src.bias.attrs
@@ -445,15 +449,17 @@ class GroupQuantizeLinear(nn.Module):  # pylint: disable=too-many-instance-attri
 class GroupQuantizeEmbedding(nn.Module):
     """An nn.Embedding module with group quantization"""
 
-    def __init__(self, num: Union[int, tir.Var], dim: int, config: GroupQuantize):
+    def __init__(self, num: Union[int, tir.Var], dim: int, name, config: GroupQuantize):
         self.num = num
         self.dim = dim
         self.config = config
         num_group = tir.ceildiv(dim, config.group_size)
+        name_q = name + '_q' if name is not None else None
+        name_s = name + '_s' if name is not None else None
         self.q_weight = nn.Parameter(
-            (num, config.num_storage_per_group * num_group), config.storage_dtype
+            (num, config.num_storage_per_group * num_group), config.storage_dtype, name=name_q
         )
-        self.q_scale = nn.Parameter((num, num_group), config.model_dtype)
+        self.q_scale = nn.Parameter((num, num_group), config.model_dtype, name=name_s)
 
     @staticmethod
     def from_embedding(embedding: nn.Embedding, config: GroupQuantize) -> "GroupQuantizeEmbedding":
@@ -474,7 +480,7 @@ class GroupQuantizeEmbedding(nn.Module):
             The group quantized GroupQuantizeEmbedding layer.
         """
         num, dim = embedding.weight.shape
-        return GroupQuantizeEmbedding(num, dim, config)
+        return GroupQuantizeEmbedding(num, dim, embedding.name, config)
 
     def forward(self, x: nn.Tensor):  # pylint: disable=invalid-name
         """

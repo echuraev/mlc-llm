@@ -94,6 +94,11 @@ class LlamaFFN(nn.Module):
     def __init__(self, config: LlamaConfig):
         super().__init__()
         self.intermediate_size = config.intermediate_size // config.tensor_parallel_shards
+        print("self.intermediate_size: ", self.intermediate_size)
+        print("config.intermediate_size: ", config.intermediate_size)
+        print("config.tensor_parallel_shards: ", config.tensor_parallel_shards)
+        print("config.hidden_size: ", config.hidden_size)
+        self.i = 0
         self.gate_up_proj = nn.Linear(
             in_features=config.hidden_size,
             out_features=2 * self.intermediate_size,
@@ -102,6 +107,8 @@ class LlamaFFN(nn.Module):
         self.down_proj = nn.Linear(self.intermediate_size, config.hidden_size, bias=False)
 
     def forward(self, x: Tensor):
+        self.i += 1
+        print(self.i, ". x: ", x)
         concat_x1_x2 = self.gate_up_proj(x)
         x1, x2 = op.split(concat_x1_x2, 2, axis=-1)
         return self.down_proj(op.silu(x1) * x2)
@@ -155,47 +162,48 @@ class LlamaAttention(nn.Module):  # pylint: disable=too-many-instance-attributes
 class LlamaDecoderLayer(nn.Module):
     def __init__(self, config: LlamaConfig):
         rms_norm_eps = config.rms_norm_eps
-        self.self_attn = LlamaAttention(config)
+        #self.self_attn = LlamaAttention(config)
         self.mlp = LlamaFFN(config)
-        self.input_layernorm = nn.RMSNorm(config.hidden_size, -1, rms_norm_eps, bias=False)
-        self.post_attention_layernorm = nn.RMSNorm(config.hidden_size, -1, rms_norm_eps, bias=False)
+        #self.input_layernorm = nn.RMSNorm(config.hidden_size, -1, rms_norm_eps, bias=False)
+        #self.post_attention_layernorm = nn.RMSNorm(config.hidden_size, -1, rms_norm_eps, bias=False)
 
-        def _set_tp():
-            def _set(layer, hint):
-                layer.weight.attrs["shard_strategy"] = hint
+        #def _set_tp():
+        #    def _set(layer, hint):
+        #        layer.weight.attrs["shard_strategy"] = hint
 
-            hd = config.head_dim
-            q = self.self_attn.num_q_heads * hd
-            k = self.self_attn.num_kv_heads * hd
-            v = self.self_attn.num_kv_heads * hd
-            i = self.mlp.intermediate_size
-            _set(self.self_attn.qkv_proj, tp.ShardSingleDim("_shard_qkv", segs=[q, k, v], dim=0))
-            _set(self.self_attn.o_proj, tp.ShardSingleDim("_shard_o", dim=1))
-            _set(self.mlp.gate_up_proj, tp.ShardSingleDim("_shard_mlp_up", segs=[i, i], dim=0))
-            _set(self.mlp.down_proj, tp.ShardSingleDim("_shard_mlp_down", dim=1))
+        #    hd = config.head_dim
+        #    q = self.self_attn.num_q_heads * hd
+        #    k = self.self_attn.num_kv_heads * hd
+        #    v = self.self_attn.num_kv_heads * hd
+        #    i = self.mlp.intermediate_size
+        #    _set(self.self_attn.qkv_proj, tp.ShardSingleDim("_shard_qkv", segs=[q, k, v], dim=0))
+        #    _set(self.self_attn.o_proj, tp.ShardSingleDim("_shard_o", dim=1))
+        #    _set(self.mlp.gate_up_proj, tp.ShardSingleDim("_shard_mlp_up", segs=[i, i], dim=0))
+        #    _set(self.mlp.down_proj, tp.ShardSingleDim("_shard_mlp_down", dim=1))
 
-        self.tensor_parallel_shards = config.tensor_parallel_shards
-        _set_tp()
+        #self.tensor_parallel_shards = config.tensor_parallel_shards
+        #_set_tp()
 
     def forward(self, hidden_states: Tensor, paged_kv_cache: PagedKVCache, layer_id: int):
-        out = self.self_attn(self.input_layernorm(hidden_states), paged_kv_cache, layer_id)
-        hidden_states = self._apply_residual(out, residual=hidden_states)
-        out = self.mlp(self.post_attention_layernorm(hidden_states))
-        hidden_states = self._apply_residual(out, residual=hidden_states)
-        return hidden_states
+        #out = self.self_attn(self.input_layernorm(hidden_states), paged_kv_cache, layer_id)
+        #hidden_states = self._apply_residual(out, residual=hidden_states)
+        #out = self.mlp(self.post_attention_layernorm(hidden_states))
+        out = self.mlp(hidden_states)
+        return out
 
     def batch_forward(self, hidden_states: Tensor, paged_kv_cache: PagedKVCache, layer_id: int):
-        out = self.self_attn.batch_forward(
-            self.input_layernorm(hidden_states), paged_kv_cache, layer_id
-        )
-        hidden_states = self._apply_residual(out, residual=hidden_states)
-        out = self.mlp(self.post_attention_layernorm(hidden_states))
+        #out = self.self_attn.batch_forward(
+        #    self.input_layernorm(hidden_states), paged_kv_cache, layer_id
+        #)
+        #hidden_states = self._apply_residual(out, residual=hidden_states)
+        #out = self.mlp(self.post_attention_layernorm(hidden_states))
+        out = self.mlp(hidden_states)
         hidden_states = self._apply_residual(out, residual=hidden_states)
         return hidden_states
 
     def _apply_residual(self, out, residual):
-        if self.tensor_parallel_shards > 1:
-            return op.ccl_allreduce(out, "sum") + residual
+        #if self.tensor_parallel_shards > 1:
+        #    return op.ccl_allreduce(out, "sum") + residual
         return out + residual
 
 
@@ -203,28 +211,30 @@ class LlamaModel(nn.Module):
     def __init__(self, config: LlamaConfig):
         assert config.hidden_size % config.num_attention_heads == 0
         self.embed_tokens = nn.Embedding("vocab_size", config.hidden_size)
+        print(" >>>>>>>>>>>> config.num_hidden_layers: ", config.num_hidden_layers)
         self.layers = nn.ModuleList(
             [LlamaDecoderLayer(config) for _ in range(config.num_hidden_layers)]
+            #[LlamaDecoderLayer(config) for _ in range(1)]
         )
-        self.norm = nn.RMSNorm(config.hidden_size, -1, config.rms_norm_eps, bias=False)
-        self.tensor_parallel_shards = config.tensor_parallel_shards
+        #self.norm = nn.RMSNorm(config.hidden_size, -1, config.rms_norm_eps, bias=False)
+        #self.tensor_parallel_shards = config.tensor_parallel_shards
 
     def forward(self, input_embed: Tensor, paged_kv_cache: PagedKVCache):
-        if self.tensor_parallel_shards > 1:
-            input_embed = op.ccl_broadcast_from_worker0(input_embed)
+        #if self.tensor_parallel_shards > 1:
+        #    input_embed = op.ccl_broadcast_from_worker0(input_embed)
         hidden_states = input_embed
         for layer_id, layer in enumerate(self.layers):
             hidden_states = layer(hidden_states, paged_kv_cache, layer_id)
-        hidden_states = self.norm(hidden_states)
+        #hidden_states = self.norm(hidden_states)
         return hidden_states
 
     def batch_forward(self, input_embeds: Tensor, paged_kv_cache: PagedKVCache):
-        if self.tensor_parallel_shards > 1:
-            input_embeds = op.ccl_broadcast_from_worker0(input_embeds)
+        #if self.tensor_parallel_shards > 1:
+        #    input_embeds = op.ccl_broadcast_from_worker0(input_embeds)
         hidden_states = input_embeds
         for layer_id, layer in enumerate(self.layers):
             hidden_states = layer.batch_forward(hidden_states, paged_kv_cache, layer_id)
-        hidden_states = self.norm(hidden_states)
+        #hidden_states = self.norm(hidden_states)
         return hidden_states
 
 
@@ -233,6 +243,7 @@ class LlamaForCasualLM(nn.Module):  # pylint: disable=too-many-instance-attribut
         self.model = LlamaModel(config)
         self.lm_head = nn.Linear(config.hidden_size, "vocab_size", bias=False)
         self.num_hidden_layers = config.num_hidden_layers
+        #self.num_hidden_layers = 1
         self.num_attention_heads = config.num_attention_heads
         self.num_key_value_heads = config.num_key_value_heads
         self.head_dim = config.head_dim
@@ -267,7 +278,7 @@ class LlamaForCasualLM(nn.Module):  # pylint: disable=too-many-instance-attribut
         return self.model.embed_tokens(input_ids)
 
     def prefill(self, input_embed: Tensor, paged_kv_cache: PagedKVCache):
-        op_ext.configure()
+        #op_ext.configure()
 
         def _index(x: te.Tensor):  # x[:-1,:]
             b, s, d = x.shape

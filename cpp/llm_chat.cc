@@ -905,6 +905,7 @@ class LLMChat {
       }
       NDArray embedding = Downcast<NDArray>(
           EmbedStep(inp, append_conversation, place_in_prompt, generation_config_str));
+        LOG(WARNING) << "embeddings shape: " << embedding.Shape();
       PrefillWithEmbedStep(embedding, decode_next_token, generation_config_str);
       return;
     }
@@ -915,6 +916,7 @@ class LLMChat {
     std::vector<int32_t> prompt_tokens =
         this->PrepareBeforeEmbedding(inp, append_conversation, place_in_prompt, generation_config);
     int64_t token_len = static_cast<int64_t>(prompt_tokens.size());
+        LOG(WARNING) << "prompt_tokens len: " << token_len;
     if (token_len == 0) return;
     if (ft_.use_disco) {
       // exclude load shard time from prefill
@@ -969,6 +971,8 @@ class LLMChat {
     this->prefill_total_time += static_cast<double>((tend - tstart).count()) / 1e9;
     this->prefill_total_tokens += token_len;
     this->ProcessNextToken(next_token, generation_config);
+
+        LOG(WARNING) << ">>> After prefill" << token_len;
   }
 
   void DecodeStep(String generation_config_str = "") {

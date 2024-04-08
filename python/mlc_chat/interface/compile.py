@@ -157,6 +157,9 @@ def _compile(args: CompileArgs, model_config: ConfigBase):
             spec=model.get_default_spec(),  # type: ignore
             allow_extern=True,
         )
+        print("-" * 10)
+        print(mod)
+        print("-" * 10)
         # Step 3. Running relax compilation pipeline
         logger.info("Running optimizations using TVM Unity")
         additional_tirs = _apply_preproc_to_params(named_params, model_config)
@@ -173,6 +176,33 @@ def _compile(args: CompileArgs, model_config: ConfigBase):
         }
         logger.info("Registering metadata: %s", metadata)
         metadata["params"] = [_get_param_metadata(name, param) for name, param in named_params]
+        # # The same as for '-'
+        # print("+" * 10)
+        # print(mod)
+        # print("+" * 10)
+        pipeline=relax.get_pipeline(  # type: ignore
+            "mlc_llm",
+            target=args.target,
+            flashinfer=args.opt.flashinfer,
+            cublas_gemm=args.opt.cublas_gemm,
+            faster_transformer=args.opt.faster_transformer,
+            variable_bounds=variable_bounds,
+            additional_tirs=additional_tirs,
+            ext_mods=ext_mods,
+            metadata=metadata,
+            debug_dump=args.debug_dump,
+        )
+        print("&" * 10)
+        print("args.build_func: ", args.build_func)
+        print("relax.get_pipeline: ", pipeline)
+        print("flashinfer: ", args.opt.flashinfer)
+        print("cublas_gemm: ", args.opt.cublas_gemm)
+        print("faster_transformer: ", args.opt.faster_transformer)
+        print("variable_bounds: ", variable_bounds)
+        print("additional_tirs: ", additional_tirs)
+        print("ext_mods: ", ext_mods)
+        print("metadata: ", metadata)
+        print("&" * 10)
         with PassContext(config={"relax.backend.use_cuda_graph": args.opt.cudagraph}):
             args.build_func(
                 mod,

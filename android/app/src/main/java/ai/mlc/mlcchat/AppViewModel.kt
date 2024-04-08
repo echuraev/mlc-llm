@@ -659,20 +659,30 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         fun requestGenerate(prompt: String) {
+            Thread.sleep(1000)
             require(chatable())
             switchToGenerating()
             executorService.submit {
                 appendMessage(MessageRole.User, prompt)
                 appendMessage(MessageRole.Bot, "")
+                Thread.sleep(1000)
                 if (!callBackend { backend.prefill(prompt) }) return@submit
-                while (!backend.stopped()) {
+                var text = ""
+                var i = 0
+                while(i < 10) {
+                    text += "a"
+                    viewModelScope.launch { updateMessage(MessageRole.Bot, text) }
+                    i += 1
+                    Thread.sleep(10)
+                }
+                /*while (!backend.stopped()) {
                     if (!callBackend {
                             backend.decode()
                             val newText = backend.message
                             viewModelScope.launch { updateMessage(MessageRole.Bot, newText) }
                         }) return@submit
                     if (modelChatState.value != ModelChatState.Generating) return@submit
-                }
+                }*/
                 val runtimeStats = backend.runtimeStatsText()
                 viewModelScope.launch {
                     report.value = runtimeStats
